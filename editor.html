@@ -870,7 +870,7 @@ function describe(){
  return L;
 }
 let lastLink='';
-$('appUrl').value=store('appUrl')||'';
+$('appUrl').value=store('appUrl')||(/^https?:/.test(location.href)?location.href.replace(/[#?].*$/,'').replace(/[^\/]*$/,''):'');
 $('mkLink').onclick=async()=>{
  const ch=changed();if(!ch.length){toast('この範囲に変更した地点がありません(送る範囲を確認してください)',4000);return}
  const dl=ch.filter(r=>r.v['削除']).length,dp=dupInfo(),dn=ch.filter(r=>dp.has(r.uid)).length;
