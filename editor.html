@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>地点エディタ</title>
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--ink:#1d2330;--sub:#667085;--line:#d9dde5;--main:#1f6feb;--ok:#1a7f4b;--warn:#b54708;--chg:#fff7e0;--new:#e6f6ec;--hid:#eee}
+@media (prefers-color-scheme:dark){:root{--bg:#14171d;--card:#1d222b;--ink:#e8ebf0;--sub:#9aa4b2;--line:#323a47;--main:#5b9bff;--ok:#4cc38a;--warn:#f0a64a;--chg:#3a3216;--new:#173325;--hid:#262b34}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"Hiragino Sans","Yu Gothic",sans-serif}
+header{padding:14px 16px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+h1{margin:0;font-size:18px}
+header small{color:var(--sub)}
+main{max-width:1200px;margin:0 auto;padding:12px 16px 80px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin:12px 0}
+.card h2{margin:0 0 8px;font-size:16px}
+.step{display:inline-block;background:var(--main);color:#fff;border-radius:50%;width:22px;height:22px;text-align:center;line-height:22px;font-size:13px;margin-right:6px}
+button,.btn{font:inherit;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.pri{background:var(--main);border-color:var(--main);color:#fff}
+button:disabled{opacity:.45;cursor:default}
+input,select,textarea{font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:6px;padding:6px 8px;min-width:0}
+textarea{width:100%}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.muted{color:var(--sub);font-size:13px}
+.tablewrap{overflow:auto;max-height:68vh;border:1px solid var(--line);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{border-bottom:1px solid var(--line);padding:3px 4px;white-space:nowrap;text-align:left}
+th{position:sticky;top:0;background:var(--card);z-index:1;font-weight:600}
+td input,td select{width:100%}
+td select{min-width:78px}td input.pos{width:56px;padding:4px}.grip{cursor:grab;color:var(--sub);padding:0 4px;user-select:none}tr.over td{border-top:3px solid var(--main)}td button[data-mv]{padding:2px 7px;font-size:12px}
+td.n input{width:110px}td.s input{width:70px}td.m input{min-width:180px}td.nm input{min-width:160px}
+tr.chg td{background:var(--chg)}tr.new td{background:var(--new)}tr.del td{background:#fde8e8;text-decoration:line-through;color:var(--sub)}tr.del td:last-child,tr.del td:first-child{text-decoration:none}
+tr.hid td{background:var(--hid);color:var(--sub)}
+.tag{font-size:12px;border-radius:10px;padding:1px 8px;background:var(--line)}
+.tag.c{background:#f5c542;color:#000}.tag.n{background:var(--ok);color:#fff}
+.hide{display:none!important}
+pre{white-space:pre-wrap;word-break:break-all;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:240px;overflow:auto;font-size:13px}
+.linkbox{word-break:break-all;font-size:12px;max-height:90px;overflow:auto}
+#map{height:320px;border-radius:8px;margin-top:8px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:#222;color:#fff;padding:10px 16px;border-radius:8px;z-index:20;max-width:90vw}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:30;display:flex;align-items:center;justify-content:center;padding:10px}
+.modal .box{background:var(--card);border-radius:12px;width:min(900px,100%);max-height:100%;display:flex;flex-direction:column;padding:12px;gap:8px}
+#pm{z-index:40}#pmap{height:min(62vh,520px);border-radius:8px}
+.mk{padding:2px 8px;font-size:22px;line-height:26px;min-width:44px}
+.chp{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:34px;border:2px solid var(--line);border-radius:17px;cursor:pointer;font-size:19px;background:var(--card);user-select:none;padding:0 6px}
+.chp.on{border-color:var(--main);box-shadow:0 0 0 2px var(--main) inset}
+.chp small{font-size:11px;margin-left:3px;color:var(--ink)}
+#mkpop{position:absolute;z-index:50;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;box-shadow:0 6px 24px rgba(0,0,0,.25);display:grid;gap:6px}
+#tgtBar{border:2px solid var(--main);border-radius:10px;padding:8px 10px;margin:8px 0;display:grid;gap:6px}
+#pv{position:fixed;inset:0;background:#6b7280;z-index:60;overflow:auto;padding:0 0 30px}
+.pvbar{position:sticky;top:0;z-index:5;background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ppage{width:285mm;height:200mm;background:#fff;color:#000;margin:12px auto;display:flex;flex-direction:column;box-shadow:0 2px 12px rgba(0,0,0,.4)}
+.phead{padding:2mm 4mm;font-size:12pt;font-weight:700;border-bottom:1px solid #000;display:flex;justify-content:space-between}
+.pmapbox{flex:1;position:relative;min-height:0}
+.pfoot{padding:1.5mm 4mm;font-size:9pt;border-top:1px solid #000;line-height:1.5}
+.pm{position:relative;width:0;height:0}
+.pm .g{position:absolute;left:-10px;top:-12px;width:20px;text-align:center;font-size:20px;line-height:24px;text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff}
+.pm .n{position:absolute;left:9px;top:-9px;font-size:11px;font-weight:700;background:rgba(255,255,255,.8);padding:0 2px;white-space:nowrap;color:#000;border-radius:2px}
+@media print{
+ body>*:not(#pv){display:none!important}
+ #pv{position:static!important;background:none!important;overflow:visible!important;padding:0!important}
+ .pvbar{display:none!important}
+ .ppage{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always;width:287mm;height:199mm}
+ .ppage:last-child{break-after:auto;page-break-after:auto}
+ @page{size:A4 landscape;margin:5mm}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:2px solid var(--main);padding-bottom:0;margin:6px 0}
+.tab{padding:7px 12px;border:1px solid var(--line);border-bottom:0;border-radius:8px 8px 0 0;white-space:nowrap;cursor:pointer;background:var(--card);font-size:14px}
+.tab.on{background:var(--main);border-color:var(--main);color:#fff;font-weight:600}
+.chip{padding:5px 12px;border:1px solid var(--line);border-radius:16px;cursor:pointer;background:var(--card);font-size:14px}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bd{display:inline-block;min-width:18px;text-align:center;border-radius:9px;background:#f5c542;color:#000;font-size:11px;padding:0 5px;margin-left:5px}
+td.ll input{width:96px;font-size:12px}
+@media (max-width:700px){
+ main{padding:8px 10px 80px}
+ .tablewrap{max-height:none;border:0}
+ table,thead,tbody,tr,td{display:block;width:100%}
+ thead{display:none}
+ tr{border:1px solid var(--line);border-radius:10px;margin:8px 0;padding:6px 8px;background:var(--card)}
+ td{border:0;padding:3px 0;display:flex;gap:8px;align-items:center;white-space:normal}
+ td::before{content:attr(data-l);flex:0 0 70px;color:var(--sub);font-size:12px}
+ td.n input,td.s input,td.m input,td.nm input{width:100%;min-width:0}
+ td input[type=checkbox]{width:auto}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>地点エディタ <small>配達アプリの地点を、一覧で直して・追加して・送る</small></h1>
+</header>
+<main>
+
+<section class="card" id="s1">
+ <h2><span class="step">1</span>地点データを読み込む</h2>
+ <div class="muted">配達アプリの「地点をCSVで書き出す」で作ったCSVを選びます。(Excelで保存し直したCSVも読めます)</div>
+ <div class="row">
+  <input type="file" id="file" accept=".csv,text/csv">
+  <button id="btnDraft" class="hide">前回の続きを開く</button>
+  <span id="loadInfo" class="muted"></span>
+ </div>
+</section>
+
+<section class="card hide" id="s2">
+ <h2><span class="step">2</span>一覧で直す</h2>
+ <div class="muted">配達員さん(コース名の頭の言葉)を選び、下のシート(コース)を選んで直します。</div>
+ <div class="row" id="staffBar"></div>
+ <div class="tabs" id="tabs"></div>
+ <div class="row">
+  <input id="fText" placeholder="このシートの中で、名前・メモを探す" style="flex:1;min-width:140px">
+  <label><input type="checkbox" id="fChg"> 変更した行だけ</label>
+  <label><input type="checkbox" id="fDup"> ⚠重複だけ</label>
+  <button class="pri" id="btnNew">＋ 新規地点を登録</button>
+  <span id="cnt" class="muted"></span>
+ </div>
+ <div id="tgtBar">
+  <div class="row" style="margin:0"><b>配達先の絞り込み</b>
+   <label><input type="checkbox" id="tgtOn"> 配達先だけ(非表示・目印を除く)</label>
+   <label><input type="checkbox" id="tgtCond"> 配達条件を反映 →</label><input type="date" id="tgtDate">
+   <span class="muted" id="tgtCnt"></span></div>
+  <div class="row" style="margin:0"><span class="muted">図形</span><span id="tgtShapes"></span>
+   <span class="muted">色</span><span id="tgtColors"></span><button id="tgtClr">絞り込みを解除</button></div>
+  <div class="row" style="margin:0">
+   <select id="prScope"><option value="tab">このシートの地点を印刷</option><option value="staff">この配達員さんの全コースを印刷</option></select>
+   <button class="pri" id="btnPrint">🖨 地理院地図で印刷(A4横×2枚)</button>
+   <span class="muted">絞り込んだ配達先を、A4横2枚に収めて印刷します</span></div>
+ </div>
+ <details class="row" style="display:block">
+  <summary>まとめて直す(数字の打ち直し・文字の置き換え)</summary>
+  <div class="row">
+   <span class="muted">このシートの表示中の行すべてに</span>
+   <select id="bCol"></select>
+   <select id="bMode"><option value="set">この値にする</option><option value="add">この数を足す(数字の列)</option></select>
+   <input id="bVal" placeholder="値" size="10">
+   <button id="bGo">実行</button>
+  </div>
+  <div class="row">
+   <span class="muted">名前・メモの文字を置き換え</span>
+   <input id="rFrom" placeholder="探す文字" size="10"> → <input id="rTo" placeholder="置き換え後" size="10">
+   <select id="rCol"><option value="name">名前</option><option value="memo">メモ</option><option value="both">両方</option></select>
+   <button id="rGo">置き換える</button>
+  </div>
+ </details>
+ <div class="row">
+  <button id="btnNum">🔢 名前の数字順に並び替え(このシート)</button>
+  <button id="btnUndoOrd">↩ 並び順を元に戻す(このシート)</button>
+  <button id="btnRen">✎ コース名を変える</button>
+  <span class="muted" id="dupInfo" style="color:var(--warn)"></span>
+  <span class="muted" id="ordInfo"></span>
+ </div>
+ <div class="tablewrap"><table>
+  <thead><tr><th></th><th>番号・順番</th><th>名前</th><th>メモ</th><th>位置</th><th>図形</th><th>到着距離</th><th>非表示</th><th>✏ 詳細</th></tr></thead>
+  <tbody id="tb"></tbody>
+ </table></div>
+ <div class="muted">黄色=変更した行、緑=新しい地点、赤=削除する地点(🗑で印を付けます。送ったあと、アプリで確認して消えます)、灰色=非表示、⚠=重複の疑い。</div>
+</section>
+
+<section class="card hide" id="s3" style="display:none!important">
+ <h2><span class="step">3</span>新しい地点を登録する</h2>
+ <div class="row">
+  <select id="aCourse"></select>
+  <input id="aCourseNew" placeholder="新しいコース名(新規コースのとき)" style="flex:1;min-width:160px">
+ </div>
+ <div class="row">
+  <input id="aName" placeholder="名前 例:(12)山田様" style="flex:1;min-width:160px">
+  <select id="aShape"><option value="">形:なし</option><option>星</option><option>三角</option><option>四角</option><option>ひし形</option><option>六角形</option></select>
+  <input id="aDist" placeholder="到着距離(任意)" size="12" inputmode="numeric">
+ </div>
+ <div class="row"><input id="aMemo" placeholder="メモ" style="flex:1;min-width:200px"></div>
+ <div class="row">
+  <input id="aLL" placeholder="緯度,経度 を貼り付け 例:35.3612, 132.755" style="flex:1;min-width:220px">
+  <button id="aMap">地図で選ぶ</button>
+ </div>
+ <div id="mapBox" class="hide"><div id="map"></div><div class="muted">地図をタップすると、その場所の緯度・経度が入ります。(地理院地図や、Googleマップで調べた「緯度,経度」を貼り付けてもOK)</div></div>
+ <div class="row"><button class="pri" id="aAdd">一覧に追加する</button><span id="aMsg" class="muted"></span></div>
+</section>
+
+<section class="card hide" id="s4">
+ <h2><span class="step">4</span>配達員さんに送る</h2>
+ <div id="sum" class="muted"></div>
+ <div class="row"><span class="muted">送る範囲</span>
+  <select id="scope"><option value="staff">この配達員さんの分(上で選んだ人)</option><option value="tab">このシート(コース)だけ</option><option value="all">変更した全部</option></select></div>
+ <h3 style="margin:10px 0 4px;font-size:14px">A. 変更した所だけ送る(リンクを押すだけで入ります)</h3>
+ <div class="row">
+  <label class="muted">配達アプリのURL</label>
+  <input id="appUrl" placeholder="https://〜(配達アプリを開くアドレス)" style="flex:1;min-width:220px">
+ </div>
+ <div class="row"><button class="pri" id="mkLink">リンクと連絡文を作る</button></div>
+ <div id="linkOut" class="hide">
+  <div class="muted">連絡文(メールにそのまま貼れます。リンクも入っています)</div>
+  <textarea id="msgText" rows="9"></textarea>
+  <div class="row">
+   <button id="cpMsg" class="pri">連絡文をコピー</button>
+   <button id="cpLink">リンクだけコピー</button>
+   <button id="mailBtn">メールを作る</button>
+   <span id="linkInfo" class="muted"></span>
+  </div>
+ </div>
+ <h3 style="margin:14px 0 4px;font-size:14px">B. 全部の地点をファイルで送る</h3>
+ <div class="row"><button id="dlAll">全地点のCSVを保存</button><button id="dlChg">変更した所だけのCSVを保存</button>
+ <span class="muted">保存したCSVをメールに添付。配達アプリの「CSVを読み込む」で入ります。</span></div>
+</section>
+</main>
+<div id="pm" class="modal hide"><div class="box">
+ <div><b id="pmName"></b> <span class="muted" id="pmLL"></span></div>
+ <div class="muted">赤いピンが、この地点です。ピンをドラッグするか、地図をタップすると、位置を動かせます。灰色の点は、同じコースのほかの地点です(タップで名前)。</div>
+ <div id="pmap"></div>
+ <div class="row"><button class="pri" id="pmOk">この位置にする</button><button id="pmCancel">変えずに閉じる</button></div>
+</div></div>
+<div id="em" class="modal hide"><div class="box" style="overflow:auto">
+ <div><b id="emTitle">✏️ 地点を編集</b> <span class="muted" id="emName"></span></div>
+ <div class="row"><span class="muted">コース</span><select id="e_course"></select><input id="e_coursenew" class="hide" placeholder="新しいコース名" style="flex:1;min-width:140px"></div>
+ <div id="e_posrow" class="row hide"><span class="muted">位置</span><input id="e_ll" placeholder="緯度,経度 を貼り付け 例:35.3612, 132.755" style="flex:1;min-width:200px"><button id="e_pick" type="button">📍 地理院地図で選ぶ</button></div>
+ <div class="row"><span class="muted">図形</span><span id="e_shapechips"></span></div>
+ <div class="row"><span class="muted">色</span><span id="e_colorchips"></span></div>
+ <div class="row hide"><span class="muted">形</span><select id="e_shape"><option value="">なし</option><option>星</option><option>三角</option><option>四角</option><option>ひし形</option><option>六角形</option></select></div>
+ <input id="e_name" placeholder="名前(例:(15)銀ハコ)">
+ <textarea id="e_memo" rows="3" placeholder="メモ(例:差込口、注意事項など)"></textarea>
+ <label><input type="checkbox" id="e_lm"> 目印として登録する(配達先から除外し、ナビや件数に含めません)</label>
+ <label><input type="checkbox" id="e_hid"> 非表示にする(地図・配達先どちらにも出しません)</label>
+ <label><input type="checkbox" id="e_cd"> 到着とみなす距離を、この地点だけ変える</label>
+ <div id="e_cdw" class="row hide"><input type="number" id="e_dist" min="5" max="300" step="5" style="width:90px"> m(5〜300)</div>
+ <label><b><input type="checkbox" id="e_cond"> 配達条件を設定する(曜日・契約期間など)</b></label>
+ <div id="e_cw" class="hide" style="border-left:3px solid var(--main);padding-left:10px;display:grid;gap:8px">
+  <div>① 配達する曜日・祝日 <span class="muted">(何も選ばなければ全曜日配達)</span>
+   <div class="row" id="e_wd"></div><div class="muted" id="e_wsum"></div></div>
+  <div>② 期間 <span class="muted">(例:開始日 2026/08/20・終了日 2027/02/28。必要な方だけでOK)</span>
+   <div class="row">開始日 <input type="date" id="e_st"> 終了日 <input type="date" id="e_en"> <button id="e_clr1" type="button">✕ クリア</button></div></div>
+  <div>繰り返しパターン
+   <label style="display:block"><input type="radio" name="e_rep" value="" checked> 繰り返さない(この期間だけの、一度きりの契約)</label>
+   <label style="display:block"><input type="radio" name="e_rep" value="毎年"> 毎年繰り返す期間指定のある交代読者</label>
+   <label style="display:block"><input type="radio" name="e_rep" value="交代読者"> １年毎の交代読者</label></div>
+  <div>③ 一時的に休止する期間 <span class="muted">(任意。旅行・長期不在など。終了日の翌日から自動で再開)</span>
+   <div class="row">休止開始 <input type="date" id="e_ps"> 休止終了 <input type="date" id="e_pe"> <button id="e_clr2" type="button">✕ クリア</button></div></div>
+  <div>④ ホーム画面での通知
+   <label style="display:block"><input type="checkbox" id="e_hn"> この地点の通知は出さない(配達対象への反映はこれまで通り)</label></div>
+ </div>
+ <div class="row hide"><span class="muted">色</span><select id="e_color"><option value="">そのまま</option><option>標準</option><option>ハコ</option><option>差込口</option><option>要注意</option><option>その他</option></select></div>
+ <div class="muted" id="e_msg" style="color:var(--warn)"></div>
+ <div class="row"><button class="pri" id="e_ok">この内容にする</button><button id="e_cancel">変えずに閉じる</button></div>
+</div></div>
+<div id="toast" class="toast hide"></div>
+
+<script>
+const HEAD=['コース名','番号','名前','メモ','緯度','経度','形','目印','非表示','到着距離','条件付き配達','配達曜日','開始日','終了日','繰り返し','休止開始','休止終了','期間外通知を隠す','ID','色','順番','削除','旧コース名'];
+const EDIT=['コース名','名前','メモ','緯度','経度','形','到着距離','非表示','目印','条件付き配達','配達曜日','開始日','終了日','繰り返し','休止開始','休止終了','期間外通知を隠す','色','削除'];
+const BULK=['到着距離','形','色','メモ','名前'];
+const COLORS={'標準':'#5b8fd6','ハコ':'#4caf7d','差込口':'#e3a13c','要注意':'#e0664f','その他':'#b07fe0'};
+const DATECOLS=['開始日','終了日','休止開始','休止終了'];
+function nd(c,v){v=String(v||'').trim();if(DATECOLS.includes(c)){const m=v.match(/^(\d{4})[\/\-.年]\s*(\d{1,2})[\/\-.月]\s*(\d{1,2})日?$/);if(m)return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0')}if(c==='繰り返し'&&v==='なし')return '';if(c==='配達曜日')return v.replace(/[\s,、]/g,'');return v}
+let rows=[];      // {v:{列:値}, orig:{列:値}|null, uid}
+let uidSeq=1;
+let curStaff='',curCourse='';
+function staffOf(c){return (String(c).replace(/[（(].*$/,'').trim())||String(c)}
+function staffs(){return [...new Set(courses().map(staffOf))]}
+function coursesOf(st){return courses().filter(c=>staffOf(c)===st)}
+function nChg(f){const rc=rcSet();return rows.filter(r=>(isChanged(r)||rc.has(r.v['コース名']))&&f(r)).length}
+function fixSel(){const ss=staffs();if(!ss.includes(curStaff))curStaff=ss[0]||'';const cs=coursesOf(curStaff);if(!cs.includes(curCourse))curCourse=cs[0]||''}
+function inScope(r){const sc=($('scope')||{}).value||'staff';return sc==='all'||(sc==='tab'&&r.v['コース名']===curCourse)||(sc==='staff'&&staffOf(r.v['コース名'])===curStaff)}
+const $=id=>document.getElementById(id);
+function toast(t,ms){const e=$('toast');e.textContent=t;e.classList.remove('hide');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.add('hide'),ms||3000)}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function store(k,v){try{if(v===undefined)return localStorage.getItem(k);localStorage.setItem(k,v)}catch(e){return null}}
+
+/* ---- CSV ---- */
+function parseCsv(text){
+ text=String(text||'').replace(/^﻿/,'');
+ const out=[];let row=[],cur='',q=false;
+ for(let i=0;i<text.length;i++){const c=text[i];
+  if(q){if(c==='"'){if(text[i+1]==='"'){cur+='"';i++}else q=false}else cur+=c}
+  else if(c==='"')q=true;else if(c===','){row.push(cur);cur=''}
+  else if(c==='\r'){}else if(c==='\n'){row.push(cur);out.push(row);row=[];cur=''}else cur+=c}
+ if(cur.length||row.length){row.push(cur);out.push(row)}
+ return out.filter(r=>r.some(v=>String(v).trim()!==''));
+}
+const q=v=>{const x=v==null?'':String(v);return /[",\r\n]/.test(x)?'"'+x.replace(/"/g,'""')+'"':x};
+function toCsv(list){
+ const lines=[HEAD.map(q).join(',')];
+ const pm=posMap(),rc=rcSet(),rn=renames();
+ list.forEach(r=>{lines.push(HEAD.map(h=>q(h==='番号'?pm.get(r.uid):h==='順番'?(rc.has(r.v['コース名'])?pm.get(r.uid):''):h==='旧コース名'?(rn[r.v['コース名']]&&r.orig&&r.orig['コース名']===rn[r.v['コース名']]?r.orig['コース名']:''):r.v[h])).join(','))});
+ return lines.join('\r\n')+'\r\n';
+}
+/* 並び順の管理:rowsの並び=ルートの順番 */
+let ver=0,_pm=null,_rc=null,_v=-1;
+function bump(){ver++}
+function memo(){if(_v===ver)return;_v=ver;
+ const cnt={};_pm=new Map();const by={};
+ rows.forEach(r=>{const c=r.v['コース名'];cnt[c]=(cnt[c]||0)+1;_pm.set(r.uid,cnt[c]);(by[c]=by[c]||[]).push(r)});
+ _rc=new Set();
+ for(const c in by){let bad=false,seenNew=false,last=0;for(const r of by[c]){if(!r.orig||r.v['コース名']!==r.orig['コース名'])seenNew=true;else{if(seenNew||r.pos0<last)bad=true;last=r.pos0}}if(bad)_rc.add(c)}
+}
+function renames(){ // 新しい名前→元の名前(コース内の全地点が、同じ新しい名前に変わったコースだけ)
+ const g={};rows.forEach(r=>{if(r.orig){const o=r.orig['コース名'];(g[o]=g[o]||[]).push(r.v['コース名'])}});
+ const origNames=new Set(Object.keys(g)),out={};
+ for(const o in g){const set=new Set(g[o]);if(set.size===1){const n=[...set][0];if(n&&n!==o&&!origNames.has(n))out[n]=o}}
+ return out;
+}
+function posMap(){memo();return _pm}
+function rcSet(){memo();return _rc}
+function courseRows(c){return rows.filter(r=>r.v['コース名']===c)}
+function moveTo(uid,newPos){
+ const r=rows.find(x=>x.uid===uid);if(!r)return;const c=r.v['コース名'];
+ const idx=rows.indexOf(r);rows.splice(idx,1);
+ const list=courseRows(c);
+ let n=Math.max(1,Math.min(list.length+1,Math.round(+newPos)||1));
+ if(n>list.length){const last=list.length?rows.indexOf(list[list.length-1])+1:rows.length;rows.splice(last,0,r)}
+ else rows.splice(rows.indexOf(list[n-1]),0,r);
+ bump();render();save();
+}
+function numKey(name){ // 配達アプリの「名前の数字順に並び替え」と同じ読み取り方(1-1.8 は 1-1 の次、1-2 の前)
+ if(!name)return null;
+ const t=String(name).replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+ const m=t.match(/(\d+(?:[-.]\d+)*)/);
+ return m?m[1].split(/[-.]/).map(n=>parseInt(n,10)):null;
+}
+function cmpKey(a,b){const n=Math.max(a.length,b.length);for(let i=0;i<n;i++){const x=i<a.length?a[i]:-1,y=i<b.length?b[i]:-1;if(x!==y)return x-y}return 0}
+function loadText(text,label){
+ const t=parseCsv(text);
+ if(t.length<2){toast('CSVにデータがありません');return}
+ const head=t[0].map(h=>h.trim());
+ const idx={};HEAD.forEach(h=>idx[h]=head.indexOf(h));
+ if(idx['コース名']<0||idx['名前']<0||idx['ID']<0){toast('このCSVは読めません(見出しに「コース名」「名前」「ID」が必要です)',5000);return}
+ rows=[];
+ for(let i=1;i<t.length;i++){
+  const v={};HEAD.forEach(h=>v[h]=idx[h]>=0?String(t[i][idx[h]]==null?'':t[i][idx[h]]):'');
+  rows.push({v,orig:{...v},uid:uidSeq++});
+ }
+ const cc={};rows.forEach(r=>{const c=r.v['コース名'];cc[c]=(cc[c]||0)+1;r.pos0=cc[c]});
+ bump();start(label||'');
+}
+function start(label){
+ ['s2','s4'].forEach(i=>$(i).classList.remove('hide'));
+ $('loadInfo').textContent=label+rows.length+'件の地点を読み込みました';
+ fillCourses();render();save();
+}
+function courses(){return [...new Set(rows.map(r=>r.v['コース名']).filter(Boolean))]}
+function fillCourses(){
+ const cs=courses();
+ fixSel();drawTabs();
+ $('aCourse').innerHTML=cs.map(c=>`<option>${esc(c)}</option>`).join('')+'<option value="__new">(新しいコース)</option>';$('aCourse').value=curCourse||'';
+ $('bCol').innerHTML=BULK.map(c=>`<option>${esc(c)}</option>`).join('');
+}
+
+function brief(r){
+ const v=r.v,a=[];
+ if(v['目印'])a.push('目印');
+ if(v['条件付き配達']){a.push('条件'+(v['配達曜日']?':'+v['配達曜日']:''));}
+ if(v['休止開始']||v['休止終了'])a.push('休止');
+ return a.join('・');
+}
+function drawTabs(){
+ const ss=staffs();
+ $('staffBar').innerHTML=ss.length>1?ss.map(st=>{const n=nChg(r=>staffOf(r.v['コース名'])===st);return `<span class="chip ${st===curStaff?'on':''}" data-st="${esc(st)}">${esc(st)}${n?'<span class="bd">'+n+'</span>':''}</span>`}).join(''):'';
+ $('tabs').innerHTML=coursesOf(curStaff).map(c=>{const n=nChg(r=>r.v['コース名']===c),t=rows.filter(r=>r.v['コース名']===c).length;return `<span class="tab ${c===curCourse?'on':''}" data-co="${esc(c)}">${esc(c)} <small>(${t})</small>${n?'<span class="bd">'+n+'</span>':''}</span>`}).join('');
+}
+$('staffBar').addEventListener('click',e=>{const t=e.target.closest('[data-st]');if(!t)return;curStaff=t.dataset.st;curCourse='';fillCourses();render()});
+$('tabs').addEventListener('click',e=>{const t=e.target.closest('[data-co]');if(!t)return;curCourse=t.dataset.co;fillCourses();render()});
+
+/* ---- 変更の判定 ---- */
+function changedCols(r){if(!r.orig)return EDIT;return EDIT.filter(c=>nd(c,r.v[c])!==nd(c,r.orig[c]))}
+function posChanged(r){return !!r.orig&&r.v['コース名']===r.orig['コース名']&&rcSet().has(r.v['コース名'])&&posMap().get(r.uid)!==r.pos0}
+function isChanged(r){return !r.orig||changedCols(r).length>0||posChanged(r)}
+function changed(){const rc=rcSet();return rows.filter(r=>(isChanged(r)||rc.has(r.v['コース名']))&&inScope(r))}
+function changedAll(){const rc=rcSet();return rows.filter(r=>isChanged(r)||rc.has(r.v['コース名']))}
+
+/* ---- 一覧 ---- */
+function visible(){
+ const fc=curCourse,ft=$('fText').value.trim(),fg=$('fChg').checked,fd=$('fDup').checked,dd=fd?dupInfo():null;
+ return rows.filter(r=>(!tgtActive()||tgtOK(r))&&(!fd||dd.has(r.uid))&&(!fc||r.v['コース名']===fc)&&(!ft||(r.v['名前']+r.v['メモ']).includes(ft))&&(!fg||isChanged(r)));
+}
+function render(){
+const dups=dupInfo(),pm=posMap(),canDrag=!($('fText').value.trim()||$('fChg').checked);
+ const vis=visible();
+ const shapes=['','星','三角','四角','ひし形','六角形'];
+ $('tb').innerHTML=vis.map(r=>{
+  const ch=!r.orig?'new':isChanged(r)?'chg':'';
+  const hid=(r.v['非表示']?' hid':'')+(r.v['削除']?' del':'');
+  const cell=(c,l,cls,extra)=>`<td class="${cls||''}" data-l="${l}"><input data-u="${r.uid}" data-c="${c}" value="${esc(r.v[c])}" ${extra||''}></td>`;
+  return `<tr class="${ch}${hid}" data-row="${r.uid}">
+   <td data-l="状態">${!r.orig?'<span class="tag n">新規</span> <button data-del="'+r.uid+'" title="この新規行を取り消す">✕</button>':r.v['削除']?'<span class="tag" style="background:#d92d20;color:#fff">削除</span>':isChanged(r)?'<span class="tag c">変更</span>':''}${dups.has(r.uid)?' <span class="tag" style="background:#f79009;color:#000">⚠重複</span><div class="muted" style="white-space:normal;font-size:11px;max-width:190px;color:var(--warn)">'+esc(dups.get(r.uid).join(' / '))+'</div>':''}</td>
+   <td data-l="順番" style="white-space:nowrap"><span class="grip" draggable="${canDrag}" data-g="${r.uid}" title="つかんで上下に動かす">⠿</span> <button data-mv="${r.uid}:-1" title="1つ上へ">▲</button><button data-mv="${r.uid}:1" title="1つ下へ">▼</button> <input class="pos" type="number" min="1" data-pos="${r.uid}" value="${pm.get(r.uid)}" title="番号を入れると、その順番へ移動"></td>
+   ${cell('名前','名前','nm')}${cell('メモ','メモ','m')}
+   <td data-l="位置"><button data-map="${r.uid}" class="${isNaN(parseFloat(r.v['緯度']))?'':'ok'}">📍 地図</button></td>
+   <td data-l="図形"><button class="mk" data-mk="${r.uid}" title="押して、図形と色を選ぶ">${markHtml(r.v)}</button></td>
+   ${cell('到着距離','到着距離','s','inputmode="numeric"')}
+   <td data-l="非表示"><input type="checkbox" data-u="${r.uid}" data-c="非表示" ${r.v['非表示']?'checked':''}></td>
+   <td data-l="詳細"><button data-edit="${r.uid}">✏️ 編集</button>${r.orig?` <button data-rm="${r.uid}" title="${r.v['削除']?'削除を取り消す':'この地点を削除する(アプリで確認のうえ削除されます)'}">${r.v['削除']?'↩ 削除を取消':'🗑'}</button>`:''} <span class="muted">${esc(brief(r))}</span></td>
+  </tr>`}).join('');
+ drawTabs();$('cnt').textContent=vis.length+'件表示 / このシートの変更 '+nChg(r=>r.v['コース名']===curCourse)+'件';
+ $('tgtCnt').textContent=tgtActive()?'抽出 '+vis.length+'件':'';
+ $('dupInfo').textContent=(()=>{const n=[...dups.keys()].length;return n?'⚠ 重複の疑い '+n+'件(全体)':''})();
+ $('ordInfo').textContent=(rcSet().has(curCourse)?'並び順を変更中(送ると、このコースの順番も入れ替わります)':'')+(canDrag?'':'  ※検索中は、つかんで動かせません');
+ summary();
+}
+function summary(){
+ const ch=changed(),n=ch.filter(r=>!r.orig).length,dl=ch.filter(r=>r.v['削除']).length,all=changedAll().length;
+ $('sum').textContent='送る範囲の変更:更新 '+(ch.length-n-dl)+'件・新規 '+n+'件'+(dl?'・削除 '+dl+'件':'')+'(全体の変更 '+all+'件)';
+}
+$('tb').addEventListener('input',e=>{
+ const t=e.target,u=+t.dataset.u,c=t.dataset.c;if(!u)return;
+ const r=rows.find(x=>x.uid===u);if(!r)return;
+ r.v[c]=t.type==='checkbox'?(t.checked?'○':''):t.value;
+ const tr=t.closest('tr');
+ tr.className=(!r.orig?'new':isChanged(r)?'chg':'')+(r.v['非表示']?' hid':'');
+ drawTabs();$('cnt').textContent=visible().length+'件表示 / このシートの変更 '+nChg(r=>r.v['コース名']===curCourse)+'件';summary();save();
+});
+$('tb').addEventListener('change',e=>{if(e.target.dataset.c==='コース名'||e.target.type==='checkbox'||e.target.tagName==='SELECT'){fillCourses();render();save()}});
+$('tb').addEventListener('click',e=>{const d=e.target.dataset.del;if(d){rows=rows.filter(r=>r.uid!==+d);bump();fillCourses();render();save()}});
+['fText','fChg','fDup'].forEach(i=>$(i).addEventListener('input',render));
+
+
+/* ---- 図形(アプリと同じ形・色) ---- */
+const GLYPH={'':'●','星':'★','三角':'▲','四角':'■','ひし形':'◆','六角形':'⬢'};
+function markColor(v){return v['目印']?'#8a94ab':(COLORS[v['色']]||COLORS['標準'])}
+function markHtml(v,size){return `<span style="color:${markColor(v)};font-size:${size||22}px;${v['形']?'':'font-size:'+((size||22)*0.7)+'px'}">${GLYPH[v['形']||'']}</span>`}
+function chipsHtml(kind,curShape,curColor){
+ if(kind==='shape')return Object.keys(GLYPH).map(k=>`<span class="chp ${k===curShape?'on':''}" data-shape="${k}" title="${k||'なし(丸)'}" style="color:${COLORS[curColor]||COLORS['標準']}">${GLYPH[k]}</span>`).join('');
+ return Object.keys(COLORS).map(k=>`<span class="chp ${k===(curColor||'標準')?'on':''}" data-color="${k}" title="${k}"><span style="color:${COLORS[k]}">●</span><small>${k}</small></span>`).join('');
+}
+let mkRow=null;
+function closePop(){const p=$('mkpop');if(p)p.remove();mkRow=null}
+function drawPop(){
+ const p=$('mkpop');if(!p||!mkRow)return;const v=mkRow.v;
+ p.innerHTML=`<div class="muted">図形</div><div>${chipsHtml('shape',v['形']||'',v['色'])}</div><div class="muted">色</div><div>${chipsHtml('color',v['形']||'',v['色']||'標準')}</div>`;
+}
+$('tb').addEventListener('click',e=>{
+ const b=e.target.closest('[data-mk]');if(!b)return;e.stopPropagation();
+ const r=rows.find(x=>x.uid===+b.dataset.mk);if(!r)return;
+ const same=$('mkpop')&&mkRow===r;closePop();if(same)return;
+ mkRow=r;const p=document.createElement('div');p.id='mkpop';document.body.appendChild(p);drawPop();
+ const rc=b.getBoundingClientRect();p.style.left=Math.max(8,Math.min(rc.left+scrollX,scrollX+innerWidth-p.offsetWidth-8))+'px';p.style.top=(rc.bottom+scrollY+4)+'px';
+ p.addEventListener('click',ev=>{ev.stopPropagation();const c=ev.target.closest('.chp');if(!c||!mkRow)return;
+  if(c.dataset.shape!==undefined)mkRow.v['形']=c.dataset.shape;if(c.dataset.color)mkRow.v['色']=c.dataset.color;
+  drawPop();const old=b;render();save();});
+});
+document.addEventListener('click',()=>closePop());
+function drawEmChips(){
+ $('e_shapechips').innerHTML=chipsHtml('shape',$('e_shape').value,$('e_color').value||'標準');
+ $('e_colorchips').innerHTML=chipsHtml('color','',$('e_color').value||'標準');
+}
+$('e_shapechips').addEventListener('click',e=>{const c=e.target.closest('.chp');if(!c)return;$('e_shape').value=c.dataset.shape;drawEmChips()});
+$('e_colorchips').addEventListener('click',e=>{const c=e.target.closest('.chp');if(!c)return;$('e_color').value=c.dataset.color;drawEmChips()});
+
+/* ---- 配達先の絞り込み(図形・色・配達条件) ---- */
+function computeJapaneseHolidaysForYear(year){
+  const holidays = {}; // 'YYYY-MM-DD' -> 祝日名
+  const add = (m, d, name) => { holidays[`${year}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`] = name; };
+  const nthMonday = (month, n) => {
+    const first = new Date(year, month-1, 1);
+    const firstMonDay = 1 + ((8 - first.getDay()) % 7); // その月の最初の月曜日
+    return firstMonDay + (n-1)*7;
+  };
+  add(1, 1, '元日');
+  add(1, nthMonday(1,2), '成人の日');
+  add(2, 11, '建国記念の日');
+  add(2, 23, '天皇誕生日');
+  const shunbun = Math.floor(20.8431 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+  add(3, shunbun, '春分の日');
+  add(4, 29, '昭和の日');
+  add(5, 3, '憲法記念日');
+  add(5, 4, 'みどりの日');
+  add(5, 5, 'こどもの日');
+  add(7, nthMonday(7,3), '海の日');
+  add(8, 11, '山の日');
+  add(9, nthMonday(9,3), '敬老の日');
+  const shubun = Math.floor(23.2488 + 0.242194*(year-1980) - Math.floor((year-1980)/4));
+  add(9, shubun, '秋分の日');
+  add(10, nthMonday(10,2), 'スポーツの日');
+  add(11, 3, '文化の日');
+  add(11, 23, '勤労感謝の日');
+
+  // 振替休日：祝日が日曜と重なった場合、その直後の「祝日でない日」が休日になる
+  const dateKeys = Object.keys(holidays).sort();
+  dateKeys.forEach(key=>{
+    const d = new Date(key + 'T00:00:00');
+    if(d.getDay() === 0){
+      let next = new Date(d);
+      do{ next.setDate(next.getDate()+1); } while(holidays[toDateKey(next)]);
+      holidays[toDateKey(next)] = '振替休日';
+    }
+  });
+  // 国民の休日：前後を祝日に挟まれた「祝日でない平日」も休日になる（ゴールデンウィークの5/4等、まれに他の年にも発生）
+  Object.keys(holidays).slice().forEach(key=>{
+    const d = new Date(key + 'T00:00:00');
+    const prev = new Date(d); prev.setDate(prev.getDate()-1);
+    const next = new Date(d); next.setDate(next.getDate()+1);
+    if(!holidays[toDateKey(next)] && next.getDay()!==0){
+      const nextNext = new Date(next); nextNext.setDate(nextNext.getDate()+1);
+      if(holidays[toDateKey(nextNext)]) holidays[toDateKey(next)] = '国民の休日';
+    }
+  });
+  return holidays;
+}
+function toDateKey(d){
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function isHol(ds){return !!computeJapaneseHolidaysForYear(+ds.slice(0,4))[ds]}
+function elapsedYears(st,td){const s=new Date(st+'T12:00:00'),d=new Date(td+'T12:00:00');let y=d.getFullYear()-s.getFullYear();if(d.getMonth()<s.getMonth()||(d.getMonth()===s.getMonth()&&d.getDate()<s.getDate()))y--;return y}
+function deliverable(r,today){ // アプリの「その日に配達対象か」と同じ判定
+ const g=c=>nd(c,r.v[c]);
+ const ps=g('休止開始'),pe=g('休止終了');if(ps&&pe&&today>=ps&&today<=pe)return false;
+ if(!r.v['条件付き配達'])return true;
+ const wd=g('配達曜日');
+ if(wd){const dow=new Date(today+'T12:00:00').getDay();const names='日月火水木金土';if(!(wd.includes(names[dow])||(wd.includes('祝')&&isHol(today))))return false}
+ const st=g('開始日'),en=g('終了日'),mode=r.v['繰り返し']||'なし';
+ if(mode==='交代読者'){if(st&&today<st)return false;if(st&&((elapsedYears(st,today)%2)+2)%2!==0)return false}
+ else if(mode==='毎年'){const t=today.slice(5),a=st?st.slice(5):null,b=en?en.slice(5):null;
+  if(a&&b){if(a<=b){if(t<a||t>b)return false}else{if(t<a&&t>b)return false}}else if(a&&t<a)return false;else if(b&&t>b)return false}
+ else{if(st&&today<st)return false;if(en&&today>en)return false}
+ return true;
+}
+let fShapes=new Set(),fColors=new Set();
+function todayIso(){const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+$('tgtDate').value=todayIso();
+function drawTgt(){
+ $('tgtShapes').innerHTML=Object.keys(GLYPH).map(k=>`<span class="chp ${fShapes.has(k)?'on':''}" data-fs="${k}" title="${k||'なし(丸)'}">${GLYPH[k]}</span>`).join('');
+ $('tgtColors').innerHTML=Object.keys(COLORS).map(k=>`<span class="chp ${fColors.has(k)?'on':''}" data-fc="${k}" title="${k}"><span style="color:${COLORS[k]}">●</span><small>${k}</small></span>`).join('');
+}
+function tgtActive(){return $('tgtOn').checked||$('tgtCond').checked||fShapes.size>0||fColors.size>0}
+function tgtOK(r){
+ if(r.v['削除'])return false;
+ if($('tgtOn').checked&&(r.v['非表示']||r.v['目印']))return false;
+ if(fShapes.size&&!fShapes.has(r.v['形']||''))return false;
+ if(fColors.size&&!fColors.has(r.v['色']||'標準'))return false;
+ if($('tgtCond').checked&&!deliverable(r,$('tgtDate').value||todayIso()))return false;
+ return true;
+}
+$('tgtShapes').addEventListener('click',e=>{const c=e.target.closest('[data-fs]');if(!c)return;const k=c.dataset.fs;fShapes.has(k)?fShapes.delete(k):fShapes.add(k);drawTgt();render()});
+$('tgtColors').addEventListener('click',e=>{const c=e.target.closest('[data-fc]');if(!c)return;const k=c.dataset.fc;fColors.has(k)?fColors.delete(k):fColors.add(k);drawTgt();render()});
+['tgtOn','tgtCond','tgtDate'].forEach(i=>$(i).addEventListener('input',render));
+$('tgtClr').onclick=()=>{fShapes.clear();fColors.clear();$('tgtOn').checked=false;$('tgtCond').checked=false;drawTgt();render()};
+drawTgt();
+
+/* ---- 地理院地図でA4横2枚に印刷 ---- */
+let pvMaps=[],pvTiles=0,pvLoaded=0;
+function printRows(){
+ const scope=$('prScope').value;
+ return rows.filter(r=>!r.v['削除']&&!r.v['非表示']&&!r.v['目印']&&!isNaN(parseFloat(r.v['緯度']))&&!isNaN(parseFloat(r.v['経度']))
+  &&(scope==='staff'?staffOf(r.v['コース名'])===curStaff:r.v['コース名']===curCourse)
+  &&(!fShapes.size||fShapes.has(r.v['形']||''))&&(!fColors.size||fColors.has(r.v['色']||'標準'))
+  &&(!$('tgtCond').checked||deliverable(r,$('tgtDate').value||todayIso())));
+}
+function zoomFor(pts,w,h){
+ if(!pts.length)return 18;
+ const la=pts.map(r=>parseFloat(r.v['緯度'])),lo=pts.map(r=>parseFloat(r.v['経度']));
+ const my=x=>Math.log(Math.tan(Math.PI/4+x*Math.PI/360));
+ const dx=Math.max(1e-6,Math.max(...lo)-Math.min(...lo)),dy=Math.max(1e-6,my(Math.max(...la))-my(Math.min(...la)));
+ return Math.min(Math.log2(w*360/(256*dx)),Math.log2(h*2*Math.PI/(256*dy)));
+}
+function splitPages(pts){
+ const W=1000,H=600;
+ if(pts.length<4||zoomFor(pts,W,H)>=17.3)return [pts];
+ let best=null;
+ ['緯度','経度'].forEach(ax=>{
+  const o=pts.slice().sort((a,b)=>parseFloat(a.v[ax])-parseFloat(b.v[ax]));
+  for(let i=Math.ceil(o.length*0.25);i<=Math.floor(o.length*0.75);i++){
+   const A=o.slice(0,i),B=o.slice(i),z=Math.min(zoomFor(A,W,H),zoomFor(B,W,H));
+   if(!best||z>best.z)best={z,A,B};
+  }});
+ return [best.A,best.B];
+}
+function pointLabel(name){const m=String(name||'').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0)).match(/\d+(?:[-.]\d+)*/);return m?m[0]:''}
+$('btnPrint').onclick=()=>{
+ const pts=printRows();
+ if(!pts.length){toast('印刷する配達先がありません(絞り込みを確認してください)',4000);return}
+ loadLeaflet(()=>openPv(pts));
+};
+function openPv(pts){
+ closePv();
+ const pages=splitPages(pts);
+ const scopeName=$('prScope').value==='staff'?curStaff:curCourse;
+ const filt=[...fShapes].map(k=>GLYPH[k]).join('')+((fColors.size)?' 色:'+[...fColors].join('・'):'');
+ const dateTxt=$('tgtCond').checked?($('tgtDate').value||todayIso()):'';
+ const pv=document.createElement('div');pv.id='pv';
+ pv.innerHTML=`<div class="pvbar"><button class="pri" id="pvPrint">🖨 印刷する</button><button id="pvClose">閉じる</button>
+  <span id="pvStat" class="muted" style="color:var(--ink)">地図を読み込み中…</span>
+  <span class="muted" style="color:var(--ink)">用紙はA4・横向き(自動で横になります)。「PDFに保存」でも使えます。${pages.length===1?'':'地点が多いため、2枚に分けて地図を作ります。'}</span></div>`
+  +pages.map((p,i)=>{
+   const cnt={};p.forEach(r=>{const k=(r.v['形']||'')+'|'+(r.v['色']||'標準');cnt[k]=(cnt[k]||0)+1});
+   const leg=Object.keys(cnt).map(k=>{const [sh,co]=k.split('|');return `<span style="color:${COLORS[co]};font-size:13pt">${GLYPH[sh]}</span> ${sh||'丸'}・${co} ${cnt[k]}件`}).join('　');
+   return `<div class="ppage"><div class="phead"><span>${esc(scopeName)} 配達先 ${filt?'['+filt+'] ':''}${dateTxt?dateTxt+' ':''}全${pts.length}件</span><span>${i+1} / ${pages.length}枚目(この面 ${p.length}件)</span></div>
+   <div class="pmapbox" id="pvm${i}"></div><div class="pfoot">${leg}　／　地図:国土地理院 ${new Date().getFullYear()}年${new Date().getMonth()+1}月${new Date().getDate()}日 作成</div></div>`}).join('');
+ document.body.appendChild(pv);
+ $('pvClose').onclick=closePv;$('pvPrint').onclick=()=>window.print();
+ pvMaps=[];pvTiles=pages.length;pvLoaded=0;
+ pages.forEach((p,i)=>{
+  const map=L.map('pvm'+i,{zoomControl:false,attributionControl:false,zoomSnap:0.25,preferCanvas:false});
+  const t=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:18,crossOrigin:true}).addTo(map);
+  t.on('load',()=>{pvLoaded++;pvStat()});
+  L.control.scale({imperial:false,position:'bottomleft'}).addTo(map);
+  pts.forEach(r=>{
+   const mark=`<div class="pm"><span class="g" style="color:${markColor(r.v)};${r.v['形']?'':'font-size:14px'}">${GLYPH[r.v['形']||'']}</span><span class="n">${esc(pointLabel(r.v['名前']))}</span></div>`;
+   L.marker([parseFloat(r.v['緯度']),parseFloat(r.v['経度'])],{icon:L.divIcon({className:'',html:mark,iconSize:[0,0]}),interactive:false}).addTo(map);
+  });
+  const b=L.latLngBounds(p.map(r=>[parseFloat(r.v['緯度']),parseFloat(r.v['経度'])]));
+  map.fitBounds(b.pad(0.06),{padding:[24,24],maxZoom:18,animate:false});
+  pvMaps.push(map);
+ });
+ setTimeout(()=>{pvMaps.forEach(m=>m.invalidateSize())},200);
+ setTimeout(()=>{if(pvLoaded<pvTiles)$('pvStat')&&($('pvStat').textContent='一部の地図が読み込み中です。少し待ってから印刷してください')},9000);
+}
+function pvStat(){const s=$('pvStat');if(s)s.textContent=pvLoaded>=pvTiles?'✓ 地図の読み込みができました。印刷できます':'地図を読み込み中…('+pvLoaded+'/'+pvTiles+')'}
+function closePv(){const p=$('pv');if(p)p.remove();pvMaps.forEach(m=>{try{m.remove()}catch(e){}});pvMaps=[]}
+window.addEventListener('beforeprint',()=>{pvMaps.forEach(m=>m.invalidateSize())});
+
+/* ---- 削除(印だけ付ける。アプリ側で確認のうえ削除) ---- */
+$('tb').addEventListener('click',e=>{const m=e.target.closest('[data-rm]');if(!m)return;const r=rows.find(x=>x.uid===+m.dataset.rm);if(!r)return;
+ r.v['削除']=r.v['削除']?'':'○';render();save()});
+/* ---- 重複の警告(同じコースで同じ名前/ 3m以内の同じ位置) ---- */
+function dm(a,b,c,d){const R=6371000,x=(d-b)*Math.PI/180*Math.cos((a+c)/2*Math.PI/180),y=(c-a)*Math.PI/180;return R*Math.sqrt(x*x+y*y)}
+function dupInfo(){
+ const out=new Map(),add=(r,t)=>{if(!out.has(r.uid))out.set(r.uid,[]);out.get(r.uid).push(t)};
+ const names={},grid={};
+ rows.forEach(r=>{if(r.v['削除']||r.v['非表示']||r.v['目印'])return;
+  const nm=String(r.v['名前']||'').replace(/\s+/g,'').trim(),c=r.v['コース名'];
+  if(nm&&nm!=='(無題)'){const k=c+'\u0001'+nm;(names[k]=names[k]||[]).push(r)}
+  const la=parseFloat(r.v['緯度']),lo=parseFloat(r.v['経度']);
+  if(!isNaN(la)&&!isNaN(lo)){r._la=la;r._lo=lo;const k=Math.round(la/0.00006)+','+Math.round(lo/0.00006);(grid[k]=grid[k]||[]).push(r)}});
+ for(const k in names)if(names[k].length>1)names[k].forEach(r=>add(r,'同じコースに同じ名前: '+r.v['名前']));
+ for(const k in grid){const [a,b]=k.split(',').map(Number);
+  for(let da=-1;da<=1;da++)for(let db=-1;db<=1;db++){const o=grid[(a+da)+','+(b+db)];if(!o)continue;
+   grid[k].forEach(r=>o.forEach(t=>{if(t.uid>r.uid&&dm(r._la,r._lo,t._la,t._lo)<=3){add(r,'ほぼ同じ位置: '+t.v['名前']);add(t,'ほぼ同じ位置: '+r.v['名前'])}}))}}
+ return out;
+}
+/* ---- 順番の入れ替え ---- */
+$('tb').addEventListener('click',e=>{const m=e.target.closest('[data-mv]');if(!m)return;
+ const [u,d]=m.dataset.mv.split(':').map(Number);const r=rows.find(x=>x.uid===u);if(!r)return;
+ const p=posMap().get(u)+d;if(p<1||p>courseRows(r.v['コース名']).length)return;moveTo(u,p)});
+$('tb').addEventListener('change',e=>{const t=e.target;if(t.dataset.pos){const u=+t.dataset.pos;moveTo(u,+t.value)}});
+let dragUid=null;
+$('tb').addEventListener('dragstart',e=>{const g=e.target.closest('[data-g]');if(!g)return;dragUid=+g.dataset.g;e.dataTransfer.effectAllowed='move';try{e.dataTransfer.setData('text/plain','x')}catch(x){}});
+$('tb').addEventListener('dragover',e=>{if(dragUid==null)return;e.preventDefault();const tr=e.target.closest('tr');document.querySelectorAll('tr.over').forEach(x=>x.classList.remove('over'));if(tr)tr.classList.add('over')});
+$('tb').addEventListener('drop',e=>{e.preventDefault();const tr=e.target.closest('tr');document.querySelectorAll('tr.over').forEach(x=>x.classList.remove('over'));
+ if(!tr||dragUid==null)return;const t=+tr.dataset.row;const u=dragUid;dragUid=null;if(t===u)return;moveTo(u,posMap().get(t))});
+$('tb').addEventListener('dragend',()=>{dragUid=null;document.querySelectorAll('tr.over').forEach(x=>x.classList.remove('over'))});
+$('btnNum').onclick=()=>{
+ const c=curCourse;if(!c)return;const list=courseRows(c);
+ const keyed=list.map((r,i)=>({r,i,k:numKey(r.v['名前'])}));
+ const num=keyed.filter(x=>x.k).sort((a,b)=>cmpKey(a.k,b.k)||a.i-b.i),non=keyed.filter(x=>!x.k);
+ const sorted=num.concat(non).map(x=>x.r);
+ const idxs=list.map(r=>rows.indexOf(r)).sort((a,b)=>a-b);
+ sorted.forEach((r,i)=>{rows[idxs[i]]=r});bump();render();save();
+ toast('名前の数字の順に並び替えました'+(non.length?'(数字が見つからない'+non.length+'件は最後)':''));
+};
+$('btnUndoOrd').onclick=()=>{
+ const c=curCourse;if(!c)return;const list=courseRows(c);
+ const sorted=list.slice().sort((a,b)=>(a.orig?a.pos0:1e9)-(b.orig?b.pos0:1e9));
+ const idxs=list.map(r=>rows.indexOf(r)).sort((a,b)=>a-b);sorted.forEach((r,i)=>{rows[idxs[i]]=r});bump();render();save();toast('このシートの並び順を元に戻しました');
+};
+
+/* ---- まとめて直す ---- */
+$('bGo').onclick=()=>{
+ const c=$('bCol').value,m=$('bMode').value,val=$('bVal').value;
+ const vis=visible();if(!vis.length)return;
+ if(m==='add'){const d=parseFloat(val);if(isNaN(d)){toast('足す数を入れてください');return}
+  vis.forEach(r=>{const x=parseFloat(r.v[c]);if(!isNaN(x))r.v[c]=String(Math.round((x+d)*1e7)/1e7)})}
+ else vis.forEach(r=>r.v[c]=val);
+ render();save();toast(vis.length+'行を直しました(黄色の行を確認してください)');
+};
+$('rGo').onclick=()=>{
+ const f=$('rFrom').value,t=$('rTo').value,w=$('rCol').value;if(!f){toast('探す文字を入れてください');return}
+ let n=0;visible().forEach(r=>{(w==='both'?['名前','メモ']:[w==='name'?'名前':'メモ']).forEach(c=>{if(r.v[c].includes(f)){r.v[c]=r.v[c].split(f).join(t);n++}})});
+ render();save();toast(n+'か所を置き換えました');
+};
+
+/* ---- 新規登録 ---- */
+function parseLL(s){const m=String(s).replace(/[，、,\s]+/g,',').match(/(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);return m?[m[1],m[2]]:null}
+$('aAdd').onclick=()=>{
+ const msg=t=>{$('aMsg').textContent=t};
+ let c=$('aCourse').value;if(c==='__new'||!c)c=$('aCourseNew').value.trim();
+ const name=$('aName').value.trim(),ll=parseLL($('aLL').value);
+ if(!c){msg('コースを選ぶか、新しいコース名を入れてください');return}
+ if(!name){msg('名前を入れてください');return}
+ if(!ll){msg('緯度・経度が読み取れません。「35.36, 132.75」の形で入れるか、地図で選んでください');return}
+ const la=+ll[0],lo=+ll[1];if(la<-90||la>90||lo<-180||lo>180){msg('緯度・経度の値が正しくありません');return}
+ const dist=$('aDist').value.trim();if(dist&&(isNaN(+dist)||+dist<5||+dist>300)){msg('到着距離は5〜300で入れてください');return}
+ const v={};HEAD.forEach(h=>v[h]='');
+ Object.assign(v,{'コース名':c,'名前':name,'メモ':$('aMemo').value,'緯度':ll[0],'経度':ll[1],'形':$('aShape').value,'到着距離':dist});
+ rows.push({v,orig:null,uid:uidSeq++});bump();
+ ['aName','aMemo','aLL','aDist'].forEach(i=>$(i).value='');
+ curCourse=c;curStaff=staffOf(c);fillCourses();render();save();msg('追加しました(一覧の一番下・緑の行)');
+};
+$('aCourse').onchange=()=>{$('aCourseNew').style.display=$('aCourse').value==='__new'?'':'none'};
+$('scope').onchange=summary;
+
+/* ---- 地図 ---- */
+let mapObj=null,pin=null;
+function gsiLayers(map){
+ const std=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',{maxZoom:18,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'});
+ const photo=L.tileLayer('https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',{maxZoom:18,attribution:'<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>'});
+ std.addTo(map);L.control.layers({'地図':std,'航空写真':photo},null,{position:'topright'}).addTo(map);
+}
+function loadLeaflet(cb){
+ if(window.L){cb();return}
+ const l=document.createElement('link');l.rel='stylesheet';l.href='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css';document.head.appendChild(l);
+ const s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js';s.onload=cb;s.onerror=()=>toast('地図を読み込めません(インターネットに接続してください)',4000);document.head.appendChild(s);
+}
+$('aMap').onclick=()=>{
+ $('mapBox').classList.toggle('hide');if($('mapBox').classList.contains('hide'))return;
+ loadLeaflet(()=>{
+  if(!mapObj){
+   const first=rows.find(r=>!isNaN(parseFloat(r.v['緯度'])));
+   const c=first?[+first.v['緯度'],+first.v['経度']]:[35.36,132.75];
+   mapObj=L.map('map',{maxZoom:18}).setView(c,17);
+   gsiLayers(mapObj);
+   mapObj.on('click',e=>{const la=e.latlng.lat.toFixed(6),lo=e.latlng.lng.toFixed(6);$('aLL').value=la+', '+lo;
+    if(pin)pin.setLatLng(e.latlng);else pin=L.marker(e.latlng).addTo(mapObj)});
+  }
+  setTimeout(()=>mapObj.invalidateSize(),50);
+ });
+};
+
+/* ---- ✏ 地点の詳細を編集(アプリの「地点を編集」と同じ項目) ---- */
+let emRow=null;
+const DOW=['日','月','火','水','木','金','土','祝'];
+const isoDate=(c,v)=>nd(c,v);
+function emWeekdays(){return [...document.querySelectorAll('#e_wd .wd.on')].map(b=>b.dataset.d).join('')}
+function emSum(){const w=emWeekdays();$('e_wsum').textContent='現在の設定:'+(w?w+'のみ配達':'全曜日(毎日配達)')}
+$('e_wd').innerHTML=DOW.map(d=>`<button type="button" class="wd" data-d="${d}" style="min-width:40px">${d}</button>`).join('');
+$('e_wd').addEventListener('click',e=>{const b=e.target.closest('.wd');if(!b)return;b.classList.toggle('on');b.style.background=b.classList.contains('on')?'var(--main)':'';b.style.color=b.classList.contains('on')?'#fff':'';emSum()});
+$('e_cd').onchange=()=>$('e_cdw').classList.toggle('hide',!$('e_cd').checked);
+$('e_cond').onchange=()=>$('e_cw').classList.toggle('hide',!$('e_cond').checked);
+$('e_clr1').onclick=()=>{$('e_st').value='';$('e_en').value=''};
+$('e_clr2').onclick=()=>{$('e_ps').value='';$('e_pe').value=''};
+let emMode='edit';
+function fillEmCourses(sel){
+ const cs=courses();$('e_course').innerHTML=cs.map(c=>`<option>${esc(c)}</option>`).join('')+'<option value="__new">(新しいコース)</option>';
+ $('e_course').value=sel;if($('e_course').value!==sel)$('e_course').value=cs[0]||'__new';
+ $('e_coursenew').classList.toggle('hide',$('e_course').value!=='__new');
+}
+$('e_course').onchange=()=>$('e_coursenew').classList.toggle('hide',$('e_course').value!=='__new');
+function openEm(r,mode){
+ emMode=mode;emRow=r;const v=r.v;
+ $('emTitle').textContent=mode==='new'?'＋ 新規地点を登録':'✏️ 地点を編集';
+ $('emName').textContent=mode==='new'?'':'['+v['コース名']+']';
+ $('e_posrow').classList.toggle('hide',mode!=='new');$('e_ll').value='';
+ fillEmCourses(v['コース名']);$('e_coursenew').value='';
+ $('e_shape').value=v['形']||'';$('e_name').value=mode==='new'?'':v['名前'];$('e_memo').value=v['メモ'];
+ $('e_color').value=v['色']||'';drawEmChips();
+ $('e_lm').checked=!!v['目印'];$('e_hid').checked=!!v['非表示'];
+ const hasD=String(v['到着距離']||'').trim()!=='';$('e_cd').checked=hasD;$('e_dist').value=hasD?v['到着距離']:'';$('e_cdw').classList.toggle('hide',!hasD);
+ $('e_cond').checked=!!v['条件付き配達'];$('e_cw').classList.toggle('hide',!v['条件付き配達']);
+ const wd=nd('配達曜日',v['配達曜日']);document.querySelectorAll('#e_wd .wd').forEach(b=>{const on=wd.includes(b.dataset.d);b.classList.toggle('on',on);b.style.background=on?'var(--main)':'';b.style.color=on?'#fff':''});emSum();
+ $('e_st').value=nd('開始日',v['開始日']);$('e_en').value=nd('終了日',v['終了日']);
+ $('e_ps').value=nd('休止開始',v['休止開始']);$('e_pe').value=nd('休止終了',v['休止終了']);
+ const rp=nd('繰り返し',v['繰り返し']);document.querySelectorAll('input[name=e_rep]').forEach(x=>x.checked=(x.value===rp));
+ $('e_hn').checked=!!v['期間外通知を隠す'];$('e_msg').textContent='';
+ $('em').classList.remove('hide');
+}
+$('tb').addEventListener('click',e=>{
+ const u=e.target.closest('[data-edit]');if(!u)return;
+ const r=rows.find(x=>x.uid===+u.dataset.edit);if(r)openEm(r,'edit');
+});
+function blankRow(c){const v={};HEAD.forEach(h=>v[h]='');v['コース名']=c;return {v,orig:null,uid:-1}}
+$('btnNew').onclick=()=>openEm(blankRow(curCourse||courses()[0]||''),'new');
+$('e_pick').onclick=()=>{const p=parseLL($('e_ll').value);if(p){emRow.v['緯度']=p[0];emRow.v['経度']=p[1]}pmRow=emRow;loadLeaflet(()=>openPm())};
+$('e_cancel').onclick=()=>$('em').classList.add('hide');
+function moveRowToCourse(r,c){
+ const idx=rows.indexOf(r);rows.splice(idx,1);r.v['コース名']=c;
+ const list=courseRows(c);const at=list.length?rows.indexOf(list[list.length-1])+1:rows.length;rows.splice(at,0,r);
+}
+$('e_ok').onclick=()=>{
+ const m=t=>{$('e_msg').textContent=t};
+ const cd=$('e_cd').checked,dist=$('e_dist').value.trim(),cond=$('e_cond').checked;
+ let course=$('e_course').value;if(course==='__new')course=$('e_coursenew').value.trim();
+ if(!course){m('コースを選ぶか、新しいコース名を入れてください');return}
+ const name=$('e_name').value.trim();
+ if(emMode==='new'&&!name){m('名前を入れてください');return}
+ if(cd&&(dist===''||isNaN(+dist)||+dist<5||+dist>300)){m('到着距離は5〜300で入れてください');return}
+ const rp=(document.querySelector('input[name=e_rep]:checked')||{}).value||'';
+ const st=$('e_st').value,en=$('e_en').value;
+ if(cond&&!rp&&st&&en&&en<st){m('終了日が開始日より前になっています');return}
+ if(cond&&rp==='交代読者'&&!st){m('「１年毎の交代読者」は、開始日が必要です');return}
+ const ps=$('e_ps').value,pe=$('e_pe').value;if(ps&&pe&&pe<ps){m('休止終了が休止開始より前になっています');return}
+ let ll=null;
+ if(emMode==='new'){
+  ll=parseLL($('e_ll').value);
+  if(!ll){m('位置が読み取れません。「地理院地図で選ぶ」を押すか、「35.36, 132.75」の形で入れてください');return}
+  if(+ll[0]<-90||+ll[0]>90||+ll[1]<-180||+ll[1]>180){m('緯度・経度の値が正しくありません');return}
+ }
+ const v=emRow.v;
+ v['形']=$('e_shape').value;v['名前']=name||'(無題)';v['メモ']=$('e_memo').value;
+ if($('e_color').value)v['色']=$('e_color').value;
+ v['目印']=$('e_lm').checked?'○':'';v['非表示']=$('e_hid').checked?'○':'';
+ v['到着距離']=cd?String(Math.round(+dist)):'';
+ v['条件付き配達']=cond?'○':'';
+ if(cond){v['配達曜日']=emWeekdays();v['開始日']=st;v['終了日']=en;v['繰り返し']=rp||'なし';v['期間外通知を隠す']=$('e_hn').checked?'○':''}
+ v['休止開始']=ps;v['休止終了']=pe;
+ if(emMode==='new'){
+  v['緯度']=ll[0];v['経度']=ll[1];v['コース名']=course;
+  emRow.uid=uidSeq++;
+  const d=rows.filter(x=>String(x.v['名前']).replace(/\s+/g,'')===name.replace(/\s+/g,'')&&x.v['コース名']===course&&!x.v['削除']);
+  if(d.length&&!confirm('同じコースに、同じ名前の地点が既にあります。\n\n「'+name+'」\n\nそれでも登録しますか?'))return;
+  const list=courseRows(course);const at=list.length?rows.indexOf(list[list.length-1])+1:rows.length;rows.splice(at,0,emRow);
+  bump();curCourse=course;curStaff=staffOf(course);$('em').classList.add('hide');fillCourses();render();save();toast('新しい地点を登録しました(緑の行)。一覧の一番下にあります');
+  return;
+ }
+ if(course!==v['コース名']){moveRowToCourse(emRow,course);bump();$('em').classList.add('hide');fillCourses();render();save();toast('「'+course+'」へ移動しました(そのシートの一番下)。');return}
+ $('em').classList.add('hide');render();save();toast('この内容にしました(黄色の行を確認してください)');
+};
+/* ---- コース名を変える ---- */
+$('btnRen').onclick=()=>{
+ const o=curCourse;if(!o)return;const n=(prompt('このコースの新しい名前を入れてください\n\n今の名前:'+o,o)||'').trim();
+ if(!n||n===o)return;
+ if(courses().includes(n)){alert('その名前のコースは、既にあります。別の名前にしてください。(別のコースへ動かすときは、各行の✏️編集で「コース」を選びます)');return}
+ rows.forEach(r=>{if(r.v['コース名']===o)r.v['コース名']=n});
+ curCourse=n;curStaff=staffOf(n);bump();fillCourses();render();save();toast('コース名を「'+n+'」に変えました(アプリに送ると、アプリ側の名前も変わります)',4500);
+};
+
+/* ---- 地点の位置を地図で見る・動かす ---- */
+let pmMap=null,pmLayer=null,pmPin=null,pmRow=null,pmPos=null;
+$('tb').addEventListener('click',e=>{
+ const u=e.target.closest('[data-map]');if(!u)return;
+ pmRow=rows.find(r=>r.uid===+u.dataset.map);if(!pmRow)return;
+ loadLeaflet(()=>openPm());
+});
+function openPm(){
+ const r=pmRow,la=parseFloat(r.v['緯度']),lo=parseFloat(r.v['経度']);
+ $('pm').classList.remove('hide');
+ $('pmName').textContent=(r.v['名前']||'(無題)')+'  ['+r.v['コース名']+']';
+ const ok=!isNaN(la)&&!isNaN(lo);const nb=rows.find(x=>x!==r&&x.v['コース名']===r.v['コース名']&&!isNaN(parseFloat(x.v['緯度'])));pmPos=ok?[la,lo]:(nb?[parseFloat(nb.v['緯度']),parseFloat(nb.v['経度'])]:[35.36,132.75]);
+ if(!pmMap){
+  pmMap=L.map('pmap',{maxZoom:18});
+  gsiLayers(pmMap);
+  pmLayer=L.layerGroup().addTo(pmMap);
+  pmMap.on('click',ev=>{pmPos=[ev.latlng.lat,ev.latlng.lng];pmPin.setLatLng(ev.latlng);showLL()});
+ }
+ pmLayer.clearLayers();
+ rows.forEach(o=>{if(o===r||o.v['コース名']!==r.v['コース名'])return;const a=parseFloat(o.v['緯度']),b=parseFloat(o.v['経度']);if(isNaN(a)||isNaN(b))return;
+  L.circleMarker([a,b],{radius:6,color:'#555',weight:1,fillColor:'#999',fillOpacity:.8}).bindTooltip(o.v['名前']||'',{direction:'top'}).addTo(pmLayer)});
+ if(pmPin)pmMap.removeLayer(pmPin);
+ pmPin=L.marker(pmPos,{draggable:true,icon:L.divIcon({className:'',html:'<div style="font-size:30px;line-height:30px;margin:-28px 0 0 -10px">📍</div>',iconSize:[20,30]})}).addTo(pmMap);
+ pmPin.on('dragend',()=>{const p=pmPin.getLatLng();pmPos=[p.lat,p.lng];showLL()});
+ pmMap.setView(pmPos,17);setTimeout(()=>pmMap.invalidateSize(),60);showLL();
+ if(!ok)toast('この地点には位置がまだありません。地図をタップして決めてください',4000);
+}
+function showLL(){$('pmLL').innerHTML=pmPos?'<a href="https://maps.gsi.go.jp/#18/'+pmPos[0].toFixed(6)+'/'+pmPos[1].toFixed(6)+'/" target="_blank" rel="noopener">地理院地図で開く</a>':''}
+$('pmCancel').onclick=()=>$('pm').classList.add('hide');
+$('pmOk').onclick=()=>{
+ if(!pmRow||!pmPos)return;
+ pmRow.v['緯度']=pmPos[0].toFixed(7);pmRow.v['経度']=pmPos[1].toFixed(7);
+ $('pm').classList.add('hide');
+ if(pmRow===emRow&&emMode==='new'&&!$('em').classList.contains('hide')){$('e_ll').value=pmRow.v['緯度']+', '+pmRow.v['経度'];toast('位置を入れました');return}
+ render();save();toast('位置を変更しました(黄色の行)');
+};
+
+/* ---- 送る ---- */
+async function gz(str){
+ const bytes=new TextEncoder().encode(str);let tag='r',buf=bytes;
+ if(window.CompressionStream){const cs=new CompressionStream('gzip');buf=new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(cs)).arrayBuffer());tag='z'}
+ let bin='';buf.forEach(b=>bin+=String.fromCharCode(b));
+ return tag+'.'+btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+function describe(){
+ const ch=changed(),L=[];
+ Object.entries(renames()).forEach(([n,o])=>{if(ch.some(r=>r.v['コース名']===n))L.push(`【コース名の変更】「${o}」→「${n}」`)});
+ ch.forEach(r=>{
+  const nm=r.v['名前']||'(無題)',co=r.v['コース名'];
+  if(!r.orig){L.push(`【新規】${co}「${nm}」`+(r.v['メモ']?`(メモ:${r.v['メモ']})`:''));return}
+  if(r.v['削除']){L.push(`【削除】${r.orig['コース名']}「${r.orig['名前']||nm}」`);return}
+  const rn=renames();
+  const cc=changedCols(r).filter(c=>!(c==='コース名'&&rn[r.v['コース名']]&&r.orig['コース名']===rn[r.v['コース名']])),pos=cc.includes('緯度')||cc.includes('経度');
+  const parts=cc.filter(c=>c!=='緯度'&&c!=='経度').map(c=>c==='非表示'?(r.v[c]?'非表示にする':'非表示を解除'):`${c}「${r.orig[c]||'なし'}」→「${r.v[c]||'なし'}」`);
+  if(rcSet().has(co)){const x=r.pos0,y=posMap().get(r.uid);if(x!==y)parts.push('順番 '+x+'番→'+y+'番')}
+  if(pos)parts.push('位置を移動(地理院地図: https://maps.gsi.go.jp/#18/'+r.v['緯度']+'/'+r.v['経度']+'/ )');
+  if(parts.length)L.push(`【変更】${co}「${r.orig['名前']||nm}」 `+parts.join('、'));
+ });
+ return L;
+}
+let lastLink='';
+$('appUrl').value=store('appUrl')||'';
+$('mkLink').onclick=async()=>{
+ const ch=changed();if(!ch.length){toast('この範囲に変更した地点がありません(送る範囲を確認してください)',4000);return}
+ const dl=ch.filter(r=>r.v['削除']).length,dp=dupInfo(),dn=ch.filter(r=>dp.has(r.uid)).length;
+ if(dl&&!confirm('削除する地点が '+dl+'件 含まれています。\n配達員さんがリンクを開いて「OK」を押すと、アプリから消えます(元に戻せません)。\n\nこのまま作りますか?'))return;
+ if(dn&&!confirm('重複の疑いがある地点が '+dn+'件 含まれています(一覧の⚠重複)。\n\nこのまま作りますか?'))return;
+ let base=$('appUrl').value.trim();
+ if(!/^https?:\/\//.test(base)){toast('配達アプリのURLを入れてください(https:// から)',4000);return}
+ base=base.replace(/#.*$/,'');store('appUrl',base);
+ const tok=await gz(toCsv(ch));
+ lastLink=base+'#chg='+tok;
+ const lines=describe();
+ $('msgText').value='配達先の変更のお知らせです。\n\n'+lines.join('\n')+'\n\n▼ 下のリンクをタップすると、アプリに変更が入ります。\n(確認の画面が出ます。「OK」を押すと反映されます)\n'+lastLink+'\n';
+ $('linkOut').classList.remove('hide');
+ const n=lastLink.length;
+ $('linkInfo').textContent='リンクの長さ '+n+'文字'+(n>6000?'(長めです。うまく開けないときは、B の全地点CSVを添付してください)':'');
+};
+async function copy(t,ok){try{await navigator.clipboard.writeText(t);toast(ok)}catch(e){toast('コピーできませんでした。文字を長押ししてコピーしてください',4000)}}
+$('cpMsg').onclick=()=>copy($('msgText').value,'連絡文をコピーしました');
+$('cpLink').onclick=()=>copy(lastLink,'リンクをコピーしました');
+$('mailBtn').onclick=()=>{
+ const body=$('msgText').value;
+ if(body.length>1800){copy(body,'連絡文が長いため、コピーしました。メールに貼り付けてください');return}
+ location.href='mailto:?subject='+encodeURIComponent('配達先の変更')+'&body='+encodeURIComponent(body);
+};
+function download(name,text){
+ const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['﻿'+text],{type:'text/csv;charset=utf-8'}));
+ a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);
+}
+function stamp(){const d=new Date();return String(d.getFullYear()).slice(-2)+String(d.getMonth()+1).padStart(2,'0')+String(d.getDate()).padStart(2,'0')}
+$('dlAll').onclick=()=>{download('地点一覧_'+stamp()+'.csv',toCsv(rows));toast('全地点のCSVを保存しました')};
+$('dlChg').onclick=()=>{const c=changed();if(!c.length){toast('変更した地点がありません');return}download('変更点_'+stamp()+'.csv',toCsv(c));toast('変更点のCSVを保存しました')};
+
+/* ---- 下書き(この端末のブラウザにだけ残す) ---- */
+function save(){store('draft',JSON.stringify(rows.map(r=>({v:r.v,o:r.orig,p:r.pos0}))))}
+$('file').onchange=async e=>{
+ const f=e.target.files[0];if(!f)return;
+ const buf=await f.arrayBuffer();let text;
+ try{text=new TextDecoder('utf-8',{fatal:true}).decode(buf)}catch(x){text=new TextDecoder('shift_jis').decode(buf)}
+ loadText(text,f.name+':');
+};
+(function(){
+ const d=store('draft');
+ if(d&&d.length>5){$('btnDraft').classList.remove('hide');
+  $('btnDraft').onclick=()=>{try{rows=JSON.parse(d).map(x=>({v:x.v,orig:x.o,pos0:x.p,uid:uidSeq++}));bump();start('前回の続き:')}catch(e){toast('下書きを開けませんでした')}}}
+})();
+</script>
+</body>
+</html>
